@@ -1,0 +1,74 @@
+name: Release skills
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate tag and manifests
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          python3 - "$version" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          version = sys.argv[1]
+          manifests = [
+              pathlib.Path(".claude-plugin/plugin.json"),
+              pathlib.Path(".cursor-plugin/plugin.json"),
+              pathlib.Path("clients/manifest.json"),
+          ]
+          for path in manifests:
+              actual = json.loads(path.read_text(encoding="utf-8"))["version"]
+              if actual != version:
+                  raise SystemExit(f"{path}: version {actual} does not match tag {version}")
+          PY
+
+      - name: Build versioned archives
+        run: |
+          set -eu
+          version="$GITHUB_REF_NAME"
+          mkdir -p dist/bundle/skills
+          cp -R skills/numitracker "dist/bundle/skills/numitracker"
+          if [ -d skills/numitracker-dealer ]; then
+            cp -R skills/numitracker-dealer "dist/bundle/skills/numitracker-dealer"
+          fi
+          cp README.md LICENSE SECURITY.md "dist/bundle/"
+          (cd skills && zip -qr "../dist/numitracker-${version}.zip" numitracker)
+          if [ -d skills/numitracker-dealer ]; then
+            (cd skills && zip -qr "../dist/numitracker-dealer-${version}.zip" numitracker-dealer)
+          fi
+          (cd dist/bundle && zip -qr "../numitracker-skills-${version}.zip" .)
+          rm -r dist/bundle
+          (cd dist && sha256sum ./*.zip > SHA256SUMS)
+
+      - name: Reject secrets from archives
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import sys
+          import zipfile
+
+          pattern = re.compile(rb"nt_[0-9a-fA-F]{8}_[A-Za-z0-9_-]{20,}")
+          for archive in pathlib.Path("dist").glob("*.zip"):
+              with zipfile.ZipFile(archive) as bundle:
+                  for member in bundle.infolist():
+                      if not member.is_dir() and pattern.search(bundle.read(member)):
+                          raise SystemExit(f"secret-like value in {archive}:{member.filename}")
+          print("Release archives contain no NumiTracker API-key-shaped values.")
+          PY
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes --verify-tag

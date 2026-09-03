@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "numitracker",
+  "displayName": "NumiTracker",
+  "version": "1.0.0",
+  "description": "Official NumiTracker consumer and dealer workflows for the Polish bullion market",
+  "author": { "name": "NumiTracker" },
+  "homepage": "https://numitracker.com/integracje-ai",
+  "repository": "https://github.com/numitracker/skills",
+  "license": "MIT",
+  "keywords": ["bullion", "precious-metals", "prices", "poland", "mcp"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "userConfig": {
+    "api_key": {
+      "type": "string",
+      "title": "NumiTracker API key",
+      "description": "Scoped key created in Dashboard → Integracje AI",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}

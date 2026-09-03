@@ -1,0 +1,97 @@
+name: Validate skills
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate skills
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate structure, manifests, and evals
+        run: |
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import re
+          import sys
+
+          root = pathlib.Path(".")
+          errors = []
+
+          for path in root.rglob("*.json"):
+              try:
+                  json.loads(path.read_text(encoding="utf-8"))
+              except Exception as exc:
+                  errors.append(f"{path}: invalid JSON: {exc}")
+
+          skill_roots = sorted((root / "skills").iterdir())
+          expected = {"numitracker", "numitracker-dealer"}
+          if {path.name for path in skill_roots} != expected:
+              errors.append("skills/ must contain exactly numitracker and numitracker-dealer")
+
+          for skill_root in skill_roots:
+              skill_file = skill_root / "SKILL.md"
+              eval_file = skill_root / "evals" / "evals.json"
+              if not skill_file.is_file():
+                  errors.append(f"{skill_root}: missing SKILL.md")
+                  continue
+              lines = skill_file.read_text(encoding="utf-8").splitlines()
+              if len(lines) >= 500:
+                  errors.append(f"{skill_file}: {len(lines)} lines; must stay below 500")
+              text = "\n".join(lines)
+              if not text.startswith("---\n") or "\nname:" not in text or "\ndescription:" not in text:
+                  errors.append(f"{skill_file}: missing required YAML frontmatter")
+              for ref in re.findall(r"\]\((references/[^)]+)\)", text):
+                  if not (skill_root / ref).is_file():
+                      errors.append(f"{skill_file}: missing referenced file {ref}")
+              if not eval_file.is_file():
+                  errors.append(f"{skill_root}: missing evals/evals.json")
+                  continue
+              evals = json.loads(eval_file.read_text(encoding="utf-8"))
+              if evals.get("skill_name") != skill_root.name:
+                  errors.append(f"{eval_file}: skill_name must match directory")
+              ids = [item.get("id") for item in evals.get("evals", [])]
+              if len(ids) != len(set(ids)):
+                  errors.append(f"{eval_file}: eval IDs must be unique")
+              for item in evals.get("evals", []):
+                  for field in ("prompt", "expected_output", "expectations"):
+                      if not item.get(field):
+                          errors.append(f"{eval_file}: eval {item.get('id')} missing {field}")
+
+          secret_pattern = re.compile(r"nt_[0-9a-fA-F]{8}_[A-Za-z0-9_-]{20,}")
+          for path in root.rglob("*"):
+              if not path.is_file() or ".git" in path.parts:
+                  continue
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  continue
+              if secret_pattern.search(text):
+                  errors.append(f"{path}: looks like a real NumiTracker API key")
+
+          claude = json.loads((root / ".claude-plugin" / "plugin.json").read_text())
+          if not claude["userConfig"]["api_key"].get("sensitive"):
+              errors.append("Claude api_key userConfig must be sensitive")
+          cursor = json.loads((root / ".cursor-plugin" / "plugin.json").read_text())
+          if "NUMITRACKER_API_KEY" not in cursor["variables"]["required"]:
+              errors.append("Cursor manifest must require NUMITRACKER_API_KEY")
+          codex = (root / "clients" / "codex.toml").read_text()
+          if 'bearer_token_env_var = "NUMITRACKER_API_KEY"' not in codex:
+              errors.append("Codex config must use bearer_token_env_var")
+
+          if errors:
+              print("\n".join(f"ERROR: {error}" for error in errors))
+              sys.exit(1)
+          print("Validated public skills, evals, manifests, and secret hygiene.")
+          PY
+
+      - name: Check whitespace
+        run: git diff --check

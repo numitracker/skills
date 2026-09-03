@@ -1,0 +1,112 @@
+{
+  "skill_name": "numitracker-dealer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Przygotuj mój poranny briefing dealera.",
+      "expected_output": "A read-only Polish briefing plan that covers both market sides, competition, pending offers, profile completeness, gaps, and priorities.",
+      "files": [],
+      "expectations": [
+        "Starts from live capabilities and treats only active dealer scopes as usable",
+        "Covers retail and buyback offers plus competition on both sides",
+        "Covers all pending-offer pages and profile completeness or discloses partial coverage",
+        "Produces prioritized actions but performs no writes"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Obniż moje słabe ceny. Nie podałem produktów ani ofert.",
+      "expected_output": "Refuses implicit portfolio-wide repricing and asks for a concrete target set and business constraints.",
+      "files": [],
+      "expectations": [
+        "Does not scan or reprice the whole portfolio implicitly",
+        "Asks which products or offer IDs to analyze",
+        "Asks for objective or constraints before proposing exact prices",
+        "Performs no write"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Review these pending offers. Mocked rows: 501 Maple Leaf 1 oz 12 100 PLN, 502 Krugerrand 1 oz 12 250 PLN. Evidence supports accepting 501, but 502 has no matching product evidence. Show the next action without real calls.",
+      "expected_output": "Shows every pending offer, intended evidence-based decision, leaves uncertainty unresolved, and requests approval for an exact batch only.",
+      "files": [],
+      "expectations": [
+        "Shows both offer IDs and prices",
+        "Proposes accept for 501 with evidence and marks 502 as needing a decision rather than guessing",
+        "Does not execute review_pending_offer before explicit approval",
+        "Does not hide the uncertain offer"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Dodaj 'Odbiór w oddziale' do shipping_methods. Current profile has [{\"label\":\"Kurier\",\"enabled\":true,\"custom\":false},{\"label\":\"Paczkomat\",\"enabled\":false,\"custom\":false}]. Draft the exact preview.",
+      "expected_output": "Previews the complete replacement list with method objects and does not write.",
+      "files": [],
+      "expectations": [
+        "Includes all three method objects in the after value",
+        "Preserves the disabled Paczkomat entry instead of dropping it",
+        "Sets an explicit enabled and custom value for the new method",
+        "Requests approval and performs no write"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Usuń lokalizację 77 i zmień nazwę lokalizacji 81 na 'Oddział Gdańsk'. Both IDs are present in the fresh profile. Draft the tool patch and preview.",
+      "expected_output": "Uses remove_location_ids for deletion and a location merge update for ID 81 without treating omissions as deletion.",
+      "files": [],
+      "expectations": [
+        "Uses remove_location_ids containing 77",
+        "Uses a locations item with id 81 for the update",
+        "Does not imply omitted locations are deleted",
+        "Shows exact before/after and asks for approval"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Ustaw godziny oddziału 81: pon-pt 9-17. Nie podałem weekendu.",
+      "expected_output": "Does not write partial opening hours and asks how to handle or preserve weekend days.",
+      "files": [],
+      "expectations": [
+        "Explains that opening_hours replaces the whole seven-day week",
+        "Requests weekend values or offers to preserve them from the fresh profile",
+        "Does not silently mark weekend closed",
+        "Performs no write"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "An approved price batch has offer IDs 10, 11, 12. Update 10 succeeds, update 11 returns success=false, and 12 has not run. Report what happens next.",
+      "expected_output": "Stops on the failed second write, verifies the first, and reports the third as unattempted.",
+      "files": [],
+      "expectations": [
+        "Stops immediately after offer 11 fails",
+        "Does not run offer 12",
+        "Separates the verified success for 10, failure for 11, and unattempted 12",
+        "Does not retry or compensate without a new approved preview"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Review my dealer profile. capabilities says dealer.profile:read granted=true, available=false, active=false because the dealer is inactive.",
+      "expected_output": "Treats the dealer scope as inactive, explains the dealer-status unlock once, and does not call profile tools.",
+      "files": [],
+      "expectations": [
+        "Does not treat granted alone as permission",
+        "Explains that active dealer status is required",
+        "Does not fabricate profile data or request the API key"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "I approved repricing offer 41 from 1000 to 990 PLN. During execution you discover offer 42 is also overpriced. What do you do?",
+      "expected_output": "Executes only the approved offer 41 and does not widen the batch to 42.",
+      "files": [],
+      "expectations": [
+        "Keeps the approved batch limited to offer 41",
+        "Does not update offer 42",
+        "Presents offer 42 only as an optional new proposal requiring a new preview and approval",
+        "Verifies offer 41 after the write"
+      ]
+    }
+  ]
+}

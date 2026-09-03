@@ -1,0 +1,22 @@
+{
+  "name": "numitracker-skills",
+  "owner": { "name": "NumiTracker" },
+  "metadata": {
+    "description": "Official NumiTracker bullion-market skills and MCP connection",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "numitracker",
+      "source": "./",
+      "description": "Compare bullion markets and manage scoped NumiTracker workflows",
+      "version": "1.0.0",
+      "author": { "name": "NumiTracker" },
+      "homepage": "https://numitracker.com/integracje-ai",
+      "repository": "https://github.com/numitracker/skills",
+      "license": "MIT",
+      "category": "Data & Analytics",
+      "tags": ["bullion", "prices", "poland", "mcp"]
+    }
+  ]
+}

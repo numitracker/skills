@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "numitracker": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://api.numitracker.com/mcp",
+        "--header",
+        "Authorization:${AUTH_HEADER}"
+      ],
+      "env": {
+        "AUTH_HEADER": "Bearer <PASTE_KEY_ONLY_IN_YOUR_LOCAL_CONFIG>"
+      }
+    }
+  }
+}

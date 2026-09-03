@@ -1,0 +1,9 @@
+{
+  "name": "numitracker-skills",
+  "version": "1.0.0",
+  "repository": "https://github.com/numitracker/skills",
+  "mcp_endpoint": "https://api.numitracker.com/mcp",
+  "release": "https://github.com/numitracker/skills/releases/tag/v1.0.0",
+  "checksums": "https://github.com/numitracker/skills/releases/download/v1.0.0/SHA256SUMS",
+  "skills": ["numitracker", "numitracker-dealer"]
+}

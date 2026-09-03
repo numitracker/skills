@@ -1,0 +1,23 @@
+{
+  "name": "numitracker",
+  "displayName": "NumiTracker",
+  "description": "Official NumiTracker consumer and dealer workflows for the Polish bullion market",
+  "version": "1.0.0",
+  "author": { "name": "NumiTracker" },
+  "homepage": "https://numitracker.com/integracje-ai",
+  "repository": "https://github.com/numitracker/skills",
+  "license": "MIT",
+  "keywords": ["bullion", "precious-metals", "prices", "poland", "mcp"],
+  "skills": "./skills/",
+  "variables": {
+    "type": "object",
+    "properties": {
+      "NUMITRACKER_API_KEY": {
+        "type": "string",
+        "title": "NumiTracker API key",
+        "description": "Scoped key created in Dashboard → Integracje AI"
+      }
+    },
+    "required": ["NUMITRACKER_API_KEY"]
+  }
+}

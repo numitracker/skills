@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "numitracker": {
+      "url": "https://api.numitracker.com/mcp",
+      "headers": { "Authorization": "Bearer ${NUMITRACKER_API_KEY}" }
+    }
+  }
+}

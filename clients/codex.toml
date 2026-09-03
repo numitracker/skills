@@ -1,0 +1,3 @@
+[mcp_servers.numitracker]
+url = "https://api.numitracker.com/mcp"
+bearer_token_env_var = "NUMITRACKER_API_KEY"
