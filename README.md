@@ -69,18 +69,20 @@ the [official OpenAI Codex MCP documentation](https://developers.openai.com/code
 
 ### Claude Desktop
 
-Download the versioned skill ZIP from Releases and install it as a local skill.
-Configure the MCP connection separately with a local HTTP-to-stdio bridge. The
-bridge template in [`clients/claude-desktop.json`](clients/claude-desktop.json)
-contains a placeholder to replace only in your local Desktop configuration; the
-downloaded skill never contains the key.
+Download `numitracker-vX.Y.Z.zip` from Releases and install it as a local skill.
+Dealers can additionally install `numitracker-dealer-vX.Y.Z.zip`. Configure the
+MCP connection separately with a local HTTP-to-stdio bridge. The bridge template
+in [`clients/claude-desktop.json`](clients/claude-desktop.json) contains a
+placeholder to replace only in your local Desktop configuration; downloaded
+skills never contain the key.
 
 ### Other agents
 
-Use the version-pinned, checksum-verifying prompt in
-[`install/other-agents.md`](install/other-agents.md). It downloads a release
-archive without credentials and keeps MCP authentication as a separate manual
-step. A manual fallback is included for agents that cannot install skills.
+Use the latest-release, checksum-verifying prompt in
+[`install/other-agents.md`](install/other-agents.md). It installs the consumer
+skill first and offers the dealer skill as a separate add-on. MCP authentication
+remains a separate manual step. A manual fallback is included for agents that
+cannot install skills.
 
 ## Verify
 
@@ -112,8 +114,11 @@ Releases follow semantic versioning:
 - `v0.2.0` added the dealer skill;
 - `v1.0.0` stabilized both skills and the cross-client install surface.
 
-Each GitHub Release contains separate skill ZIPs, a combined bundle, and
-`SHA256SUMS`. Do not install an asset whose checksum does not match.
+Each GitHub Release contains one ZIP per skill and `SHA256SUMS`. Do not install
+an asset whose checksum does not match. The public metadata endpoint at
+`https://numitracker.com/api/skills/latest` resolves the current stable version,
+download URLs, checksums, and installation prompts from the latest GitHub
+Release.
 
 ## Development
 

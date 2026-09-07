@@ -1,36 +1,44 @@
-# Key-free installer prompt for other agents
+# Key-free installer prompts for other agents
 
-Copy the prompt below into an agent that can download files and install portable
-Agent Skills. The prompt is intentionally version-pinned and contains no API key.
+Start with the consumer skill. Install the dealer add-on only when dealer
+functionality is required. Both prompts resolve the latest stable release from
+NumiTracker and contain no API key.
+
+## Consumer skill
+
+Copy this prompt into an agent that can download files and install portable
+Agent Skills:
 
 ```text
-Install the official NumiTracker skills release v1.0.0 from:
-https://github.com/numitracker/skills/releases/download/v1.0.0/numitracker-skills-v1.0.0.zip
+Fetch the current official NumiTracker skills metadata from:
+https://numitracker.com/api/skills/latest
 
-Before unpacking it, download:
-https://github.com/numitracker/skills/releases/download/v1.0.0/SHA256SUMS
+Read the `skills.numitracker.installPrompt` value from the JSON response and
+follow it exactly. Use only the version, download URL, and SHA-256 checksum from
+that response. Stop if the endpoint is unavailable, its response is invalid, or
+the downloaded archive does not match the published checksum. Do not install
+the dealer add-on unless I separately request it.
+```
 
-Verify the archive's SHA-256 checksum against the exact entry in SHA256SUMS.
-Stop and report the mismatch if verification fails. If it matches, install the
-`numitracker` and `numitracker-dealer` folders into the standard user-level
-skills directory supported by this client. Do not request, read, copy, log, or
-store any NumiTracker API key while installing the skills. Do not put a key in a
-URL, prompt, archive, or repository file.
+## Dealer add-on
 
-Then configure the MCP connection separately, using the client's secret or
-environment-variable mechanism:
-- endpoint: https://api.numitracker.com/mcp
-- bearer-token variable: NUMITRACKER_API_KEY
+For a Max account linked to an active dealer, copy this prompt after installing
+the consumer skill:
 
-Verify by calling `server_info`, then `capabilities`. Report the installed paths,
-checksum result, and verification outcome.
+```text
+Fetch the current official NumiTracker skills metadata from:
+https://numitracker.com/api/skills/latest
 
-If this client cannot install Agent Skills automatically, stop after checksum
-verification and tell me how to manually copy each folder from the archive into
-its documented user-level skills directory. Keep MCP configuration as a separate
-manual step.
+Read the `skills["numitracker-dealer"].installPrompt` value from the JSON
+response and follow it exactly. Use only the version, download URL, and SHA-256
+checksum from that response. Stop if the endpoint is unavailable, its response
+is invalid, or the downloaded archive does not match the published checksum.
+The resolved instructions must first check for the base `numitracker` skill. If
+it is missing, accept the recommended installation of both skills; if you do not
+want the base skill installed, cancel the dealer installation.
 ```
 
 For clients without a standard skill directory, use `skills/numitracker/SKILL.md`
-as task instructions and load only the referenced file needed for the current
-workflow. Do not merge the consumer and dealer instructions into one prompt.
+as task instructions. Use `skills/numitracker-dealer/SKILL.md` additionally only
+for dealer workflows. Load only the referenced file needed for the current
+workflow, and do not merge the two skills into one prompt.

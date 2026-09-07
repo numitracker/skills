@@ -37,18 +37,11 @@ jobs:
         run: |
           set -eu
           version="$GITHUB_REF_NAME"
-          mkdir -p dist/bundle/skills
-          cp -R skills/numitracker "dist/bundle/skills/numitracker"
-          if [ -d skills/numitracker-dealer ]; then
-            cp -R skills/numitracker-dealer "dist/bundle/skills/numitracker-dealer"
-          fi
-          cp README.md LICENSE SECURITY.md "dist/bundle/"
+          mkdir -p dist
           (cd skills && zip -qr "../dist/numitracker-${version}.zip" numitracker)
           if [ -d skills/numitracker-dealer ]; then
             (cd skills && zip -qr "../dist/numitracker-dealer-${version}.zip" numitracker-dealer)
           fi
-          (cd dist/bundle && zip -qr "../numitracker-skills-${version}.zip" .)
-          rm -r dist/bundle
           (cd dist && sha256sum ./*.zip > SHA256SUMS)
 
       - name: Reject secrets from archives
