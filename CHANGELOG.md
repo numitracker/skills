@@ -3,6 +3,33 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Align product spot alerts with product-selected metals and null stored
+  indicators; omit ineffective market-alert metal filters.
+- Enforce alert operator threshold shapes, the two execution modes, and the
+  200-character name limit in guidance and evals.
+- Clarify missing-spot premiums and snapshot/history nulls, plus active-only
+  watchlist rows/totals, inactive-add refusals, and retained membership quotas.
+- Document structured pending-offer refusal codes, required spot data and retry
+  handling, acceptance validation, and ordinary repricing exceptions.
+- Document changed-value profile limits, schema safety ceilings, widget/year
+  bounds, own-domain websites, and location creation limits without blocking
+  unchanged legacy values or unrelated edits.
+- Add consumer and dealer evals for the updated validation and refusal paths.
+
+- Use the dealer-prefixed tool names and separate location create/update/removal
+  calls, with ownership, full-week hours, transaction, and retry guidance.
+- Clarify the foreign-dealer EU market and null prices, premium, and spread.
+- Document validated alert vocabularies and every ordered metal ratio with its
+  aliases, precision, equality, and change-detection rules.
+- Correct the per-key rate limits, search coverage, offer and history row
+  semantics, spot units, percentage premium/spread, alert market scope and
+  condition measurements, dealer price rounding, and primary-location rules.
+- Expand consumer and dealer evals for these contracts and review refusals.
+
 ## [1.0.0]
 
 ### Added

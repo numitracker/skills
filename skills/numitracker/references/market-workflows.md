@@ -21,7 +21,12 @@ may be a different weight, year, alloy, or product series.
 
 ## Exact offer comparison
 
-Ask for `PL`, `EU`, or `ALL` once and keep it consistent.
+Ask for `PL`, `EU`, or `ALL` once and keep it consistent. `offers_country="PL"`
+selects Polish dealers; `"EU"` selects dealers in NumiTracker's stored foreign
+market (`dealer.country == "EU"`), not a geographic list of EU member states.
+`"ALL"` imposes no dealer-market restriction. Prices, premium, spread, price
+filters, and price ordering follow this selection. Do not describe EU results
+as verified EU-member-state coverage.
 
 For each selected product:
 
@@ -31,8 +36,10 @@ For each selected product:
    - `sell` = buyback/skup, dealer buys from customer, highest first;
    - `both` when the user asks for spread or exit-side comparison.
 3. Follow pagination while `meta.has_more` if claiming the market-wide best.
-4. Exclude unavailable retail offers from a “can buy now” conclusion even if
-   they appear in historical or descriptive fields.
+   With `both`, all retail rows come before all buyback rows in one paged list.
+4. Retail rows include unavailable offers (`is_available=false`), still sorted
+   by price; exclude them from a “can buy now” conclusion. Buyback rows are
+   available offers only. Offer rows carry no refresh timestamp.
 
 Recommended compact columns:
 
@@ -40,7 +47,15 @@ Recommended compact columns:
 |---|---:|---|---:|---|---:|---|
 
 Omit buyback columns when the user asked only for retail. State missing buyback
-coverage instead of displaying zero.
+coverage instead of displaying zero. With no prices in the selected market,
+`best_buy_price`, `best_sell_price`, `over_spot`, and `spread` are null. Without
+retail or known positive spot, premium is null; without either price side,
+spread is null. Retail with known positive spot and no buyback still permits a
+premium. Missing spot alone does not prevent a spread when both prices exist.
+Never turn null into zero, a -100% premium, or an arbitrage signal. Details and
+watchlist can retain active unpriced products; `search_products` returns only
+products with a retail price in the selected market, and its spread/buyback
+orderings also require a buyback price.
 
 ## “Best” criteria
 
@@ -59,8 +74,10 @@ create hidden weights.
 ## Spot, premium, and spread
 
 Use `get_spot_prices` for the latest indexed metal snapshot and its returned
-timestamp. Use product/offer fields for `over_spot` and `spread` where the
-server supplies them.
+timestamp (`created_at`). Use product fields for `over_spot` and `spread` where
+the server supplies them. Both are percentages: `over_spot` is the retail price
+over the product's weight × spot, and `spread` is
+`(retail_price - buyback_price) / retail_price × 100%`.
 
 Only derive when necessary and units are verified:
 
@@ -69,8 +86,11 @@ Only derive when necessary and units are verified:
 - spread percent (when requested) = `(retail_price - buyback_price) /
   retail_price × 100%`.
 
-Name the basis used. A 1 oz product price cannot be compared directly with a
-per-gram spot value without converting the fine-metal content.
+Name the basis used. `get_spot_prices` values are PLN per troy ounce; a 10 g
+product price cannot be compared directly with them without converting the
+metal content. Missing per-metal spot/buy/sell snapshot prices and ratios with
+missing operands are null. If there is no snapshot at all, `get_spot_prices`
+returns a failed envelope; do not invent a zero-price snapshot or timestamp.
 
 ## Price history
 
@@ -80,7 +100,10 @@ Use `get_price_history` after resolving one canonical product.
 - `PL` and `EU` are valid history series. For `ALL`, fetch both and display them
   separately; do not blend them into one synthetic series.
 - Preserve chronological order and returned currency.
-- Disclose `days`, page coverage, and gaps/no observations.
+- Each row is one day's lowest available retail and highest available buyback
+  price for that market. A side with no offer that day is returned as null
+  with a null dealer; report it as no observation, never as a zero price.
+- Disclose `days` (1-365), page coverage, and gaps/no observations.
 - Describe observed changes; do not extrapolate or forecast.
 
 ## Market opportunities
@@ -90,12 +113,19 @@ Use `list_market_opportunities` only when
 signals, not recommendations or guaranteed arbitrage.
 
 Report opportunity type, score, relevant price/premium evidence, market and
-freshness. Explain that “arbitrage” describes indexed retail/buyback records and
+freshness. The tool has no market filter; use each row's `dealer_country` and
+`detected_at`. An empty result with a cold-cache warning means the signals are
+not computed yet, not that none exist. Explain that “arbitrage” describes indexed retail/buyback records and
 may not survive fees, availability, shipping, taxes, timing, or dealer checks.
 
 ## Watchlist
 
-Use `list_watchlist` for reads and product identity checks. For add/remove:
+Use `list_watchlist` for reads and product identity checks. Inactive products
+are excluded from both rows and totals, regardless of market; an active product
+without prices can still appear. `add_to_watchlist` refuses inactive products.
+A hidden inactive membership is not proof of deletion or freed quota: the add
+limit counts stored memberships. Removal can still remove an inactive product
+when its slug is known. For add/remove:
 
 1. Resolve the canonical product slug.
 2. Read current watchlist state to prevent an unintended target.

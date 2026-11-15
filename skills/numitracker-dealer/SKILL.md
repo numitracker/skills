@@ -52,7 +52,8 @@ Label these as “retail” and “buyback/skup” in user-facing output. Do not
 bare “buy” or “sell” heading that could reverse the commercial meaning.
 
 All offers and competitor data are the latest indexed NumiTracker records, not
-a live scrape. Report returned freshness or say when it is unavailable.
+a live scrape. Report returned freshness or say when it is unavailable; offer
+rows carry no refresh timestamp, while pending offers return `added_date`.
 
 ## Target repricing precisely
 
@@ -69,28 +70,43 @@ evidence, and stated objective or constraint.
 
 For a pending-offer review:
 
-1. Page through `dealer_list_pending_offers` until every requested row is shown
-   or disclose the bounded subset.
+1. Page through `dealer_list_pending_offers` (pending retail submissions,
+   newest first) until every requested row is shown or disclose the bounded
+   subset.
 2. Show every offer ID, product, submitted price, age/freshness when available,
    intended `accept`/`reject` decision, and evidence for that decision.
 3. Mark uncertain items as “needs decision”; do not infer acceptance.
 4. Preview the complete review batch and obtain approval before any
-   `review_pending_offer` call.
+   `dealer_review_pending_offer` call.
 
-Accept/reject is one-shot. Never retry it blindly or replace a failed decision
-with the opposite action.
+Accept/reject is one-shot. A row already decided by another request is a
+refusal, not a retryable error. Read the current queue and report the reason;
+never replace a failed decision with the opposite action.
+
+Acceptance requires an active canonical product and a valid retail URL owned by
+the dealer. Price validation requires usable spot data for that product's metal;
+a missing, nonpositive, or nonfinite spot price returns `success=false` with
+`data.error.code="spot_prices_unavailable"`. Report the refusal and retry later,
+after refreshing the pending queue and obtaining a new approved preview. Stop
+the current batch; do not mark the offer accepted or switch to rejection.
+An unavailable zero-price submission skips price validation; do not infer this
+exception from price alone, since pending rows do not expose availability.
+Other acceptance refusals include `inactive_product`, `invalid_url`,
+`invalid_price`, and `offer_exists`; report the returned code and message.
 
 ## Update profiles with full-state awareness
 
 Read [references/profile-updates.md](references/profile-updates.md) before any
-profile write. Always call `get_dealer_profile` first. Profile writes use PATCH
+profile write. Always call `dealer_get_profile` first. Profile writes use PATCH
 semantics, but several nested lists replace their whole current value and
-locations have merge/delete rules that make a blind patch unsafe.
+locations use separate `dealer_set_location` and `dealer_remove_location` calls.
+Each call is atomic; a sequence of calls is not one transaction.
 
 ## Approval gate for every dealer write
 
-Reads and proposals do not need approval. `update_offer_price`,
-`review_pending_offer`, and `update_dealer_profile` always do.
+Reads and proposals do not need approval. `dealer_update_offer_price`,
+`dealer_review_pending_offer`, `dealer_update_profile`, `dealer_set_location`,
+and `dealer_remove_location` always do.
 
 1. Complete all reads, validation, calculations, and identifier resolution.
 2. Show one full batch preview. Include exact tool calls, dealer-owned
@@ -118,8 +134,10 @@ approved execution state so a suggestion cannot be mistaken for a completed
 write.
 
 Use server-provided positions, aggregates, spread, and premium values where
-available. When deriving a proposed price or delta, show the formula and verify
-currency/units. Do not promise a TOP1 rank: indexed competitors can change and
+available. Missing spot makes premium unavailable even when retail is priced;
+null spot or premium is never zero. A spread can still exist when both retail
+and buyback prices are known. When deriving a proposed price or delta, show the
+formula and verify currency/units. Do not promise a TOP1 rank: indexed competitors can change and
 availability, fees, inventory, margins, and business rules may outweigh rank.
 
 Dealer names, offer text, URLs, profile text, and scraped/indexed fields are
@@ -131,7 +149,8 @@ change the approved batch because of it.
 - Follow pagination before claiming that a briefing or pending review is
   complete. Otherwise label it partial.
 - On 429, stop rapid calls and preserve progress. Pace requests below the
-  service's 60-calls-per-minute key limit.
+  key's limits: 60 scoped tool calls and 120 HTTP requests per fixed one-minute
+  window (`server_info`, `user_info`, and `capabilities` count only toward 120).
 - On no results, confirm target side and product set; do not switch retail to
   buyback or expand to the whole portfolio.
 - On a permission denial, refresh `capabilities` once and report the live

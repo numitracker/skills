@@ -123,7 +123,8 @@
       "expectations": [
         "Interprets cena skupu as sell/buyback with highest price winning",
         "Plans a PL versus EU comparison rather than treating ALL as one market",
-        "Does not answer as generic precious-metals education"
+        "Does not answer as generic precious-metals education",
+        "Explains that EU is the stored foreign-dealer bucket, not a verified list of EU member states"
       ]
     },
     {
@@ -136,6 +137,206 @@
         "Ranks by server-provided over_spot ascending",
         "Checks pagination before claiming the top five",
         "Avoids return forecasts and allocation advice"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "Does offers_country=\"EU\" mean that every dealer is based in an EU member state? Explain PL, EU, and ALL without calling tools.",
+      "expected_output": "Explains the stored dealer-market buckets without promising geographic membership.",
+      "files": [],
+      "expectations": [
+        "PL selects Polish dealers",
+        "EU selects the stored foreign-dealer market, not a list of EU member states",
+        "ALL imposes no dealer-market restriction"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "EU product details and watchlist return best_buy_price=null, best_sell_price=null, over_spot=null, spread=null. Is this a free product or a -100% premium bargain? Default EU search did not return it.",
+      "expected_output": "Explains missing selected-market coverage without inventing prices or metrics.",
+      "files": [],
+      "expectations": [
+        "Treats all four nulls as absent data, never zero or a bargain",
+        "Explains why detail/watchlist membership can remain while search excludes the product",
+        "Does not silently switch markets"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "An EU product has retail price 200 PLN and premium 8%, but best_sell_price=null and spread=null. Explain the comparison.",
+      "expected_output": "Preserves the known retail price and premium while reporting missing buyback coverage.",
+      "files": [],
+      "expectations": [
+        "Keeps the 200 PLN retail price and 8% premium",
+        "Does not replace missing buyback or spread with zero",
+        "Does not derive a spread or claim arbitrage"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "Draft a category alert with metal_type=\"gold\", product_form=\"bar\", weights=[\"made-up-weight\"]. No vocabularies have been read. Use any defaults you like.",
+      "expected_output": "Resolves current vocabulary slugs and asks for missing condition/persistence before an approved write.",
+      "files": [],
+      "expectations": [
+        "Uses list_product_attributes to resolve all three fields rather than guessing",
+        "Explains that any unknown supplied slug refuses the whole creation",
+        "Does not silently drop the invalid weight",
+        "Requests explicit persistence and exact preview approval"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "For a gold product alert I also supplied metal_type=\"\" and weights=[\"1oz\",\"unknown\"], although those filters are unnecessary. Can the server ignore them?",
+      "expected_output": "Explains that every supplied vocabulary value is validated before persistence.",
+      "files": [],
+      "expectations": [
+        "Empty scalar metal slug is invalid even if the condition does not use it",
+        "One invalid weight refuses the entire request without partial creation",
+        "Null means absent and an empty weights list means unrestricted",
+        "Does not claim the server truncates or ignores invalid values"
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "Draft a recurring market ratio alert below 1.2 for platinum/palladium using ratio_pt_pd. Also explain whether silver/gold and mixed ratio_zloto_ag are supported. Do not execute.",
+      "expected_output": "Normalizes aliases to ordered canonical pairs and previews the requested ratio alert.",
+      "files": [],
+      "expectations": [
+        "Uses ratio_platyna_pallad in the exact preview",
+        "Recognizes ratio_srebro_zloto and normalizes ratio_zloto_ag to ratio_zloto_srebro",
+        "States all 12 ordered pairs of different zloto/srebro/platyna/pallad metals are supported",
+        "Does not invert numerator and denominator or write before approval"
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "For ratio_srebro_zloto with eq target 0.0137, do measurements 0.013694, 0.013690 and 0.013710 match? Does any use the same test?",
+      "expected_output": "Applies strict fourth-significant-figure tolerance and distinguishes change detection.",
+      "files": [],
+      "expectations": [
+        "Only 0.013694 matches; the two exact tolerance boundaries do not",
+        "States the strict tolerance is 0.00001",
+        "Explains any compares measurements rounded half up to four significant figures",
+        "States storage/display and lt/gt/inclusive between retain six-place precision"
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "Explain eq and any for ratio_au_ag versus ratio_ag_au, and the saved thresholds for 80.125 gold/silver and 0.0136945 silver/gold.",
+      "expected_output": "Distinguishes the gold/silver special case and rounds submitted thresholds half up.",
+      "files": [],
+      "expectations": [
+        "Normalizes to ratio_zloto_srebro and ratio_srebro_zloto",
+        "Gold/silver uses two places, strict eq difference below 0.01, and exact change between two-place measurements",
+        "Silver/gold uses six places with fourth-significant-figure eq/any rules",
+        "Stored thresholds are 80.13 and 0.013695"
+      ]
+    },
+    {
+      "id": 21,
+      "prompt": "Can I use ratio_au_au, ratio_copper_ag, or spot_gold for a ratio condition? What if one ratio operand is zero?",
+      "expected_output": "Rejects invalid pairs and incompatible indicators, and avoids false triggers.",
+      "files": [],
+      "expectations": [
+        "Same-metal and unsupported-metal pairs are invalid",
+        "A ratio condition requires a ratio indicator; market spot_price requires a supported spot indicator, while product spot_price uses the product metal and stores no indicator",
+        "Zero, negative, missing, or nonfinite operands yield no measurement and no threshold trigger"
+      ]
+    },
+    {
+      "id": 22,
+      "prompt": "Draft a one_time product spot_price alert below 4000 PLN for the already resolved active gold bar gold-bar-10g-p505. Do I need spot_gold, and would spot_silver or an unknown indicator override the product metal? Describe the call only; do not execute.",
+      "expected_output": "Previews a product spot alert without market_indicator, using product metal and weight rather than per-ounce market spot.",
+      "files": [],
+      "expectations": [
+        "Uses alert_type=product, condition_type=spot_price, product_slug=gold-bar-10g-p505, operator=lt, value=4000, execution_type=one_time",
+        "Omits market_indicator and value2 from the preview",
+        "Explains that any supplied indicator is discarded and stored as null, including a conflicting or unknown indicator",
+        "Measures the product metal value in PLN using matching weight units, not a 4000 PLN-per-ounce market threshold",
+        "Requests approval without performing a write"
+      ]
+    },
+    {
+      "id": 23,
+      "prompt": "Check these proposed alert operators without calling tools: lt with no value; gt with value=10 and value2=20; eq with value=0; any with value=0; any with value2=0; any with neither; between with only value=10; between with 20,10; between with 10,10. Which shapes are valid?",
+      "expected_output": "Distinguishes required thresholds, forbidden extras, and inclusive ordered ranges.",
+      "files": [],
+      "expectations": [
+        "Rejects lt without value and gt with value2",
+        "Accepts eq with value=0 and no value2; zero is not a missing threshold",
+        "Rejects either non-null threshold for any, including zero; accepts any with neither",
+        "Rejects between with a missing bound or reversed bounds; accepts equal bounds",
+        "Does not silently drop values or execute any proposed alert"
+      ]
+    },
+    {
+      "id": 24,
+      "prompt": "Set a recurring availability-change alert for active product gold-bar-10g-p505. Add value=0 and value2=0 so the JSON fields are filled. Also describe threshold fields for lost_top1 and a ratio any alert. Do not execute.",
+      "expected_output": "Uses any without placeholder thresholds for all change-based conditions.",
+      "files": [],
+      "expectations": [
+        "Omits value and value2 for availability with operator=any",
+        "Explains that TOP1 any and ratio any also refuse both non-null thresholds",
+        "Keeps recurring explicit and previews the exact availability target before approval"
+      ]
+    },
+    {
+      "id": 25,
+      "prompt": "Validate a create_alert draft whose name is exactly 201 characters and execution_type is daily. Would a 200-character name and one_time or recurring work? No tools or writes.",
+      "expected_output": "Rejects the oversized name and unknown execution mode without truncation or silent substitution.",
+      "files": [],
+      "expectations": [
+        "States the name maximum is 200 characters, so 201 is refused and 200 is within the length bound",
+        "States only one_time and recurring are accepted execution_type values",
+        "Does not silently truncate the name or substitute persistence; asks for corrected choices"
+      ]
+    },
+    {
+      "id": 26,
+      "prompt": "Preview a one_time market spot_gold alert below 14000 PLN per ounce. I suggested metal_type=srebro to make it use silver. Should that field be sent? Also consider metal_type=made-up. Do not execute.",
+      "expected_output": "Uses the market indicator alone, omits metal_type, and explains validation of unnecessary supplied slugs.",
+      "files": [],
+      "expectations": [
+        "Previews alert_type=market, condition_type=spot_price, market_indicator=spot_gold, operator=lt, value=14000, execution_type=one_time",
+        "Does not send metal_type or value2",
+        "Explains that a valid supplied metal_type is accepted but ignored by the measurement",
+        "Explains that an unknown supplied metal_type is still refused by vocabulary validation",
+        "Does not silently switch the indicator to silver; seeks clarification if silver is intended"
+      ]
+    },
+    {
+      "id": 27,
+      "prompt": "Mocked PL product details show retail 200 PLN, buyback 180 PLN, over_spot=null and spread=10. The latest snapshot has this metal spot=null. Is the premium zero, and should we remove the spread too? Explain without calls.",
+      "expected_output": "Keeps price-based spread while treating the missing-spot premium as unavailable.",
+      "files": [],
+      "expectations": [
+        "Keeps retail 200 PLN, buyback 180 PLN, and the server spread of 10%",
+        "Explains over_spot is null because no usable spot is known despite a retail price",
+        "Does not infer zero premium, a bargain, or a spot-derived value"
+      ]
+    },
+    {
+      "id": 28,
+      "prompt": "get_spot_prices first returned success=false with no snapshot available. Later a snapshot returned gold spot=null and gold_silver=null. A get_price_history row has buy_price=200, sell_price=null and dealer_sell=null. Explain these states without calls.",
+      "expected_output": "Distinguishes no snapshot from missing fields and null history observations.",
+      "files": [],
+      "expectations": [
+        "Does not invent a snapshot or timestamp after the failed envelope",
+        "Treats null spot and ratio as unavailable rather than zero",
+        "Preserves the 200 retail history observation and reports missing buyback as no observation",
+        "Does not state that MCP returns a zero price for the missing history side"
+      ]
+    },
+    {
+      "id": 29,
+      "prompt": "An existing watchlist membership is for an inactive product. Another watched product is active but has no prices in EU. What should list_watchlist include and count? Can I re-add the inactive slug to make it visible, and does its absence prove quota was freed?",
+      "expected_output": "Separates activity filtering, missing market prices, stored memberships, and add eligibility.",
+      "files": [],
+      "expectations": [
+        "Excludes the inactive product from rows and totals but allows the active unpriced product with null prices",
+        "States add_to_watchlist refuses an inactive product",
+        "Does not equate hidden membership with deletion or freed quota; the add limit counts stored memberships",
+        "Explains removal can still target an inactive product by its known slug, subject to the write preview and approval"
       ]
     }
   ]

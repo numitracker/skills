@@ -1,6 +1,6 @@
 # Targeted repricing
 
-Load this reference for price analysis and `update_offer_price` requests.
+Load this reference for price analysis and `dealer_update_offer_price` requests.
 
 ## Bound the target first
 
@@ -16,7 +16,8 @@ priorities, but each repricing task begins with an explicit target set.
 For every target:
 
 1. Use `dealer_list_offers` to resolve the dealer-owned offer ID, product slug,
-   side, price, availability, and returned timestamps.
+   side, price, and availability. It lists unavailable and inactive own offers
+   too and returns no refresh timestamp.
 2. Use product details and `list_product_offers` for the same canonical product,
    side, and requested market.
 3. Compare like-for-like currency, product variant, availability, market, and
@@ -57,14 +58,20 @@ Use exact decimal values accepted by the tool. Show the derivation, for example:
 - buyback lead: `proposed = competitor buyback price + agreed increment`;
 - percent change: `proposed = current × (1 + percent / 100)`.
 
-State any rounding explicitly. A proposed price must be positive and within the
-server's accepted bounds. Do not claim the price will produce a rank that was
-not verified against all relevant indexed competitors.
+State any rounding explicitly. Changed prices round half up to two decimal
+places in PLN. Booleans, nonfinite values, prices that round to 0 or less, and
+prices above the storage maximum are refused. When spot data is available, the
+product's configured spot-relative floor/ceiling also applies; ordinary repricing
+skips those guards when the relevant spot is missing or nonpositive. An exactly
+unchanged stored price is preserved without rerunning these business guards.
+Pending-offer acceptance has a separate spot-data requirement described in
+`SKILL.md`. Do not claim a price will produce a rank that was not verified
+against all relevant indexed competitors.
 
 ## Approval and execution
 
 The proposal table becomes the write preview only when it also names
-`update_offer_price`, exact `offer_kind`, and the execution order. Ask for one
+`dealer_update_offer_price`, exact `offer_kind`, and the execution order. Ask for one
 approval of that complete batch.
 
 After approval:

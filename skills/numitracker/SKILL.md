@@ -38,7 +38,9 @@ into one compact message when several are missing.
   only when the user appears to want a specific issue.
 - For every price-related workflow, ask once whether the data market is `PL`,
   `EU`, or `ALL`, unless supplied or already established in the task. Reuse the
-  choice consistently. For history, which supports `PL` and `EU`, fulfill `ALL`
+  choice consistently. `PL` selects Polish dealers; `EU` selects the stored
+  foreign-dealer market, not a list of EU member states; `ALL` includes both.
+  For history, which supports `PL` and `EU`, fulfill `ALL`
   by retrieving and clearly separating both series.
 - When the user says “best,” ask what best means: lowest retail price, lowest
   premium over spot, strongest dealer buyback/highest skup, best spread, a
@@ -81,6 +83,22 @@ live scrape or a guarantee that checkout will show the same value. State the
 selected market and the freshness/refresh timestamp returned by the tool. If no
 timestamp is returned, say that NumiTracker did not provide one; do not infer it
 from the current time or unrelated data.
+
+A product with no prices in the selected market has null `best_buy_price`,
+`best_sell_price`, `over_spot`, and `spread`. A missing retail price makes
+premium null; either missing price makes spread null. Missing spot data also
+makes premium null, even with a retail price. Retail with known positive spot
+can have a premium when buyback is missing. Null is unavailable data, never zero
+or a bargain. `search_products` returns only products with a retail price in the
+selected market; details and watchlist can retain active unpriced products.
+Inactive products are excluded from watchlist rows and totals and cannot be added.
+
+Alert vocabulary inputs are validated: resolve `metal_type`, `product_form`,
+and every weight slug with `list_product_attributes`; do not guess them. Market
+indicators are the four `spot_*` values or `ratio_<numerator>_<denominator>`
+using different metals from `zloto`, `srebro`, `platyna`, `pallad`. All 12 ordered
+pairs work; `au`, `ag`, `pt`, `pd` aliases normalize to those slugs. The alert
+reference specifies equality and change rules; read it before proposing a ratio.
 
 Prefer server-provided `over_spot`, `spread`, ranks, and opportunity scores. If
 the user asks for a value that must be derived:
@@ -148,8 +166,9 @@ authorize writes.
   before changing market or product characteristics.
 - On a 429/rate-limit response, stop rapid calls, preserve completed work, and
   retry only after the server's indicated window or with user consent when no
-  retry timing is provided. The service limit is 60 calls per minute per key;
-  pace pagination and batch reads.
+  retry timing is provided. Each key may make 60 scoped tool calls and 120 HTTP
+  requests per fixed one-minute window; `server_info`, `user_info`, and
+  `capabilities` count only toward the 120. Pace pagination and batch reads.
 - On a missing scope or live tier/dealer denial, refresh `capabilities` once and
   explain the current unlock path. Never ask for the raw API key.
 - On malformed or unsuccessful envelopes, report the server summary and do not

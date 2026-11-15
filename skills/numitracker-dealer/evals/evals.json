@@ -33,7 +33,7 @@
       "expectations": [
         "Shows both offer IDs and prices",
         "Proposes accept for 501 with evidence and marks 502 as needing a decision rather than guessing",
-        "Does not execute review_pending_offer before explicit approval",
+        "Does not execute dealer_review_pending_offer before explicit approval",
         "Does not hide the uncertain offer"
       ]
     },
@@ -51,14 +51,15 @@
     },
     {
       "id": 5,
-      "prompt": "Usuń lokalizację 77 i zmień nazwę lokalizacji 81 na 'Oddział Gdańsk'. Both IDs are present in the fresh profile. Draft the tool patch and preview.",
-      "expected_output": "Uses remove_location_ids for deletion and a location merge update for ID 81 without treating omissions as deletion.",
+      "prompt": "Remove location 77 and rename location 81 to Branch B. Fresh dealer_get_profile data contains 77 and location 81: {\"id\":81,\"name\":\"Branch A\",\"address\":\"Example Street 1\",\"city\":\"Warsaw\",\"postal_code\":\"00-001\",\"country\":\"PL\",\"lat\":52.23,\"lng\":21.01,\"is_primary\":false,\"opening_hours\":null}. Draft the exact calls and preview; do not execute.",
+      "expected_output": "Previews separate dealer_remove_location and dealer_set_location calls, preserves required fields, and explains that the sequence is not atomic.",
       "files": [],
       "expectations": [
-        "Uses remove_location_ids containing 77",
-        "Uses a locations item with id 81 for the update",
-        "Does not imply omitted locations are deleted",
-        "Shows exact before/after and asks for approval"
+        "Uses dealer_remove_location(location_id=77)",
+        "Uses dealer_set_location with location.id=81, name=Branch B, and every required address/coordinate/primary field from the provided profile",
+        "Does not send locations or remove_location_ids to dealer_update_profile",
+        "Keeps other locations unchanged and states that separate calls are not one transaction",
+        "Shows before/after and requests approval without writing"
       ]
     },
     {
@@ -106,6 +107,196 @@
         "Does not update offer 42",
         "Presents offer 42 only as an optional new proposal requiring a new preview and approval",
         "Verifies offer 41 after the write"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "A dealer_set_location call without an id timed out after submission. I want you to send the same create again immediately. Describe your next action without real calls.",
+      "expected_output": "Reads the profile to resolve uncertainty before proposing a retry.",
+      "files": [],
+      "expectations": [
+        "Explains that repeating a no-ID create creates a second location",
+        "Uses dealer_get_profile to check whether the branch was saved",
+        "Does not blindly repeat the one-shot call"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "dealer_remove_location(location_id=77) succeeded. A repeated call returns success=false because the location is absent. Interpret this result.",
+      "expected_output": "Treats repeated removal as a strict refusal rather than an idempotent success.",
+      "files": [],
+      "expectations": [
+        "Explains that already removed IDs are refused",
+        "Does not report the second call as a success or retry it",
+        "Separates the first applied removal from the refused repetition"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "For owned location 81, compare omitting name/opening_hours, sending null, and sending name=\"\" with opening_hours={}. All required location fields are known. Do not execute.",
+      "expected_output": "Explains preserve and clear semantics exactly.",
+      "files": [],
+      "expectations": [
+        "Omitted or null name and opening_hours preserve stored values on update",
+        "Empty name clears the branch label; empty hours object clears all hours",
+        "Any nonempty hours update must contain all seven days",
+        "Uses dealer_set_location rather than dealer_update_profile"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "An approved sequence updates the profile, creates a branch, then removes location 77. The first two succeed; removal fails. What is the resulting state and your next step?",
+      "expected_output": "Reports committed successes and the failed removal, with no automatic rollback.",
+      "files": [],
+      "expectations": [
+        "Explains that separate MCP calls do not share one transaction",
+        "Does not undo the successful profile edit or branch creation automatically",
+        "Reports the saved branch ID and failure reason",
+        "Stops on failure and requires a revised approved preview for further writes"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "dealer_review_pending_offer returns success=false and says the offer was already decided by another request. Can you retry with reject?",
+      "expected_output": "Reports a lost decision without retrying or reversing it.",
+      "files": [],
+      "expectations": [
+        "Does not retry the decision or switch to reject",
+        "Reads the current pending queue when needed",
+        "Does not count this request as an applied acceptance or rejection"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "Approved pending-offer batch: accept 501, then accept 502. The first response is success=false, data.error.code=spot_prices_unavailable, message=\"Spot prices are unavailable; retry later.\" Describe your next action without calls.",
+      "expected_output": "Reports a temporary acceptance refusal, stops the batch, and prepares any later retry from fresh state.",
+      "files": [],
+      "expectations": [
+        "Reports 501 as refused with spot_prices_unavailable, not accepted",
+        "Leaves 502 unattempted and does not switch 501 to reject",
+        "Explains that usable spot for the product metal is required for acceptance price validation",
+        "Retries only later after refreshing the pending queue and obtaining a new approved preview"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "Explain pending-offer acceptance refusals inactive_product, invalid_url, invalid_price and offer_exists. Does a 0 PLN pending row alone prove acceptance can bypass the spot check? No tools.",
+      "expected_output": "Explains acceptance validation and the narrow unavailable-zero-price exception without inferring hidden fields.",
+      "files": [],
+      "expectations": [
+        "Requires an active canonical product and a valid retail URL owned by the dealer",
+        "Distinguishes invalid price from an existing live product/dealer offer conflict",
+        "Explains that only an unavailable zero-price submission skips price validation; price zero alone is insufficient",
+        "Does not infer availability from pending rows or treat a refusal as a successful review"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "Fresh profile has an unchanged 2500-character description, 51 shipping methods, and 51 locations. I only want to change phone. Must you shorten or delete those stored values? What if I resend the same description and methods, then later change one method label?",
+      "expected_output": "Preserves unrelated legacy values and distinguishes unchanged lists from full validation of a changed list.",
+      "files": [],
+      "expectations": [
+        "Previews only the phone edit and does not truncate or delete legacy values",
+        "Explains unchanged description and method list can save above business limits within schema safety ceilings",
+        "Explains changing the shipping list validates its complete replacement and triggers the 50-entry and 100-character label limits",
+        "Does not treat 51 stored locations as blocking unrelated profile edits"
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "Review proposed changed profile values: description 2001 characters; 51 payment methods; shipping label 101 characters; a metal string 201 characters; feature id/label/description each 201 characters; manual_product_ids changed to 501 IDs. List the supported bounds. Do not write or shorten anything.",
+      "expected_output": "Applies every changed-value business limit with exact field scope.",
+      "files": [],
+      "expectations": [
+        "States description maximum 2000 and rejects 2001",
+        "States 50 entries per metals, shipping_methods, payment_methods, and features list",
+        "States method labels maximum 100 and metal strings plus feature id/label/description maximum 200",
+        "States changed manual_product_ids maximum 500 and rejects 501",
+        "Does not truncate, silently drop entries, or write invalid replacements"
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "The stored featured_offers_config has 600 manual_product_ids. Keep that exact ID list and change show_on_profile only, retaining valid layout dimensions and all other fields. Is the 500-ID business cap a blocker? What if I change the ID list or submit 5001 IDs?",
+      "expected_output": "Allows unchanged legacy selection within the input ceiling while enforcing changed-list limits.",
+      "files": [],
+      "expectations": [
+        "Preserves the complete configuration and exact unchanged 600-ID list",
+        "Explains the 500-ID business cap applies when manual_product_ids changes, independently of other configuration changes",
+        "Rejects a changed ID list above 500 and any input above the 5000-ID schema ceiling",
+        "Does not truncate the selection or execute without an approved preview"
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "Validate featured_offers_config layouts products_per_row=0,1,6,7 and number_of_rows=0,1,10,11; established_year=1799,1800,current year,next year. May unchanged stored out-of-range layout/year values be resubmitted? How do I clear the year? No tools.",
+      "expected_output": "Applies inclusive schema ranges separately from changed-value business limits.",
+      "files": [],
+      "expectations": [
+        "Accepts row widths 1 and 6 and refuses 0 and 7; accepts row counts 1 and 10 and refuses 0 and 11",
+        "Accepts 1800 and the current calendar year; refuses 1799 and next year",
+        "Does not extend the unchanged-value exception to supplied layout dimensions or established_year",
+        "Clears via clear_established_year=true without also sending a new established_year"
+      ]
+    },
+    {
+      "id": 21,
+      "prompt": "Fresh dealer profile has 50 locations. Compare creating a new branch, editing owned location 81, and removing owned location 77. What if the stored count is 51? Describe the plan only.",
+      "expected_output": "Blocks new creation at the limit without blocking updates or removals of owned branches.",
+      "files": [],
+      "expectations": [
+        "Refuses proposing a new branch while the count is 50 or more",
+        "Allows validation and preview of editing or removing an existing owned branch at counts 50 and 51",
+        "Does not silently delete a branch to make room",
+        "Uses separate location tools and preserves required fields for updates"
+      ]
+    },
+    {
+      "id": 22,
+      "prompt": "Fresh website is https://dealer.example/shop. Compare changing it to https://dealer.example/new, https://other.example, https://user:pass@dealer.example/new, or an empty string. An older stored website may fail current validation, but today I only need a phone edit. Explain without calls.",
+      "expected_output": "Keeps website edits on the current dealer domain and preserves an untouched historical website.",
+      "files": [],
+      "expectations": [
+        "Allows a valid same-domain path change but routes a domain change to staff",
+        "Refuses credentials and an empty website; does not say every text field can be cleared with an empty string",
+        "Omits website for the phone edit and does not require repairing an exactly unchanged stored URL",
+        "Previews intended changes without performing writes"
+      ]
+    },
+    {
+      "id": 23,
+      "prompt": "Ordinary dealer_update_offer_price: the proposed price is 100.125 PLN and product spot data is missing. Must this return spot_prices_unavailable like pending acceptance? Compare with a price rounding to zero, boolean true, and an exactly unchanged stored price. Do not call tools.",
+      "expected_output": "Separates ordinary repricing from acceptance, with correct rounding and validation exceptions.",
+      "files": [],
+      "expectations": [
+        "Shows changed price 100.125 rounds half up to 100.13 PLN",
+        "Explains ordinary repricing skips spot-relative guards when spot is missing or nonpositive; does not promise the acceptance refusal code here",
+        "Refuses boolean prices and changed prices rounding to zero",
+        "Explains an exactly unchanged stored price is preserved without rerunning business guards",
+        "Does not guarantee a rank or execute any write"
+      ]
+    },
+    {
+      "id": 24,
+      "prompt": "Could an unchanged profile payload bypass all input checks? Consider description 20001 characters, 501 method entries, 5001 manual IDs, phone 21, email 255, short_description 201, shipping_info 501 and website 201 characters. Explain without calls.",
+      "expected_output": "Distinguishes unchanged-value business exceptions from hard input safety and column bounds.",
+      "files": [],
+      "expectations": [
+        "States schema safety ceilings of 20000 characters for broad profile text, 500 entries for profile lists, and 5000 manual IDs",
+        "Rejects each supplied example above those ceilings even if unchanged",
+        "States phone/email/short_description/shipping_info/website bounds as 20/254/200/500/200",
+        "Recommends omitting unrelated unchanged fields without claiming omission repairs or deletes stored values"
+      ]
+    },
+    {
+      "id": 25,
+      "prompt": "For a targeted repricing analysis, mocked product details show retail 200 PLN, buyback 180 PLN, over_spot=null and spread=10; the relevant spot is null. Can you claim zero premium or discard the spread? No tools or writes.",
+      "expected_output": "Preserves usable price evidence and treats missing-spot premium as unavailable.",
+      "files": [],
+      "expectations": [
+        "Reports premium and spot as unavailable, never zero",
+        "Keeps the server-provided 10% spread because both price sides exist",
+        "Does not invent a spot-derived price target or execute repricing"
       ]
     }
   ]
