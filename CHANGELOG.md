@@ -7,6 +7,26 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 
 ### Changed
 
+- Align skills with the MCP restructure: typed per-tool output schemas,
+  `isError: true` on refused envelopes, optional `data.error.code`, removal of
+  `meta.scope_used`, and admin-key refusal on `/mcp` with HTTP 403.
+- Replace flat `dealer_update_profile` arguments and `clear_established_year`
+  with `profile: DealerProfilePatch`; document omitted/explicit-null behavior,
+  `no_fields`, unknown-key rejection, and separate location calls.
+- Document alert activation/pause trigger-history resets and activity logs,
+  current-state no-ops, revised not-found summaries, and argument validation for
+  names over 200 characters and non-finite thresholds.
+- Document inactive-product offer refusals, fixed opportunity score shapes, and
+  current dealer review refusal messages; expand contract evals.
+- Describe `list_market_opportunities` rows by `type` (`low_premium`,
+  `price_drop`, `arbitrage`, `rare_opportunity`): fields of other types are now
+  absent instead of null.
+- Document the `create_alert` call shape: one `condition` object chosen by
+  `condition_type` with only its own keys (other kinds' keys are argument
+  errors, nulls ignored, `weights` also as text), the price-condition scope
+  rule for `product` and `product_general` alerts, and typed `list_alerts`
+  conditions; drop the "accepted but ignored" guidance and update the market
+  spot eval.
 - Align product spot alerts with product-selected metals and null stored
   indicators; omit ineffective market-alert metal filters.
 - Enforce alert operator threshold shapes, the two execution modes, and the

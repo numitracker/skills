@@ -26,6 +26,9 @@ The public endpoint is:
 https://api.numitracker.com/mcp
 ```
 
+Use a public/dealer key here. This server refuses admin keys with HTTP 403.
+`capabilities` lists only the tools for the connected endpoint.
+
 Keep the API key separate from the skill. It must never be added to this
 repository, an installation URL, a prompt, or a skill archive.
 

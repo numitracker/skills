@@ -6,11 +6,13 @@ Load this reference before `dealer_update_profile`, `dealer_set_location`, or
 ## Read before write
 
 Call `dealer_get_profile` immediately before drafting a change. Use its current
-values, location IDs, completeness, and update notes. Omitted top-level fields
-are unchanged, so send only intended fields, except where a provided nested
-list replaces its complete current value.
+values, location IDs, completeness, and update notes. The tool signature is
+`dealer_update_profile(profile: DealerProfilePatch)`: put changes inside one
+`profile` object, for example `dealer_update_profile(profile={"phone": "123456789"})`.
+Omitted fields inside `profile` keep their values, so send only intended fields,
+except where a provided nested list replaces its complete current value.
 
-Editable top-level fields include contact details, website, descriptions,
+Editable fields inside `profile` include contact details, website, descriptions,
 established year, metals, shipping/payment methods and info, feature toggles,
 featured-offers configuration. Locations use the two separate location tools. Dealer name, `is_verified`, and
 `is_trusted` are admin-managed and cannot be edited here.
@@ -22,10 +24,20 @@ backslashes, invalid ports, and trailing-dot hosts are refused. An exactly
 unchanged stored website is preserved without domain revalidation; omit it for
 unrelated edits.
 
-To clear the established year, use `clear_established_year=true`. Do not send it
-with a new `established_year` value. For every other field, `null` means
-omitted; send `""` to clear a profile text field. Website cannot be cleared with
-an empty string. A call with no fields is refused.
+To clear the established year, use
+`dealer_update_profile(profile={"established_year": null})`; omission keeps it.
+`established_year` is the only profile field that explicit `null` clears.
+For every other field, `null` is ignored; use `""` to clear a text field or `[]`
+to clear a list. Website cannot be cleared with an empty string.
+
+An empty `profile={}` or a patch containing only ignored nulls, such as
+`profile={"phone": null}`, is refused with `success=false`, `isError: true`,
+`data.error.code="no_fields"` and summary `No fields to update were provided.`.
+`profile={"established_year": null}` is a valid clearing request even by itself;
+if the year is already null it succeeds with no changed fields. Unknown keys,
+including the removed `clear_established_year`, are argument-validation errors;
+do not send them at the call level or inside `profile`. A valid patch whose
+values already match succeeds with `updated_fields=[]`.
 
 ## Validate changed values
 
@@ -105,8 +117,9 @@ Use `dealer_set_location(location={...})` for one branch:
 Use `dealer_remove_location(location_id=...)` to remove exactly one owned
 location. Unknown, foreign, and already removed IDs are refused. Never guess an
 ID. Removing the primary location promotes the remaining location with the
-lowest ID, if any. `dealer_update_profile` accepts profile fields only; do not send `locations`
-or `remove_location_ids` to it.
+lowest ID, if any. `dealer_update_profile` accepts profile fields only; `locations`
+and `remove_location_ids` are unknown keys, including inside `profile`. Use only
+`dealer_set_location` / `dealer_remove_location` for branches.
 
 Each call is atomic, but a profile change and several location calls are not one
 transaction. A later failure does not undo earlier successes. Preview the exact
@@ -137,7 +150,7 @@ write until the full resulting week is known.
 
 Show:
 
-1. exact top-level PATCH fields;
+1. the exact `dealer_update_profile(profile={...})` payload with only intended fields;
 2. before → after scalar/object changes;
 3. complete before → after replacement lists;
 4. each location action as create/update/delete with ID where applicable;

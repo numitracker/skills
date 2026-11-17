@@ -92,15 +92,23 @@ the current batch; do not mark the offer accepted or switch to rejection.
 An unavailable zero-price submission skips price validation; do not infer this
 exception from price alone, since pending rows do not expose availability.
 Other acceptance refusals include `inactive_product`, `invalid_url`,
-`invalid_price`, and `offer_exists`; report the returned code and message.
+`invalid_price`, and `offer_exists`; report the returned code and summary.
+Missing or foreign offers use `not_found` with `The requested resource was not
+found.`; this includes an offer consumed before this call. `already_processed`
+means another request decided or removed the offer during this call, with
+`This pending offer was not found or was already decided by another request.`.
 
 ## Update profiles with full-state awareness
 
 Read [references/profile-updates.md](references/profile-updates.md) before any
-profile write. Always call `dealer_get_profile` first. Profile writes use PATCH
-semantics, but several nested lists replace their whole current value and
-locations use separate `dealer_set_location` and `dealer_remove_location` calls.
-Each call is atomic; a sequence of calls is not one transaction.
+profile write. Always call `dealer_get_profile` first. Call
+`dealer_update_profile(profile={...})` with a `DealerProfilePatch` object, not
+flat arguments. Omitted fields keep their values; `established_year: null`
+clears the year. Nulls on other fields are ignored, so an empty or ignored-null-only
+patch is refused with `no_fields`. Unknown keys are refused. Several nested
+lists replace their whole current value; locations use only separate
+`dealer_set_location` and `dealer_remove_location` calls. Each call is atomic;
+a sequence of calls is not one transaction.
 
 ## Approval gate for every dealer write
 
@@ -146,6 +154,14 @@ change the approved batch because of it.
 
 ## Fail safely
 
+- Connect a public/dealer key to `/mcp`; admin keys are refused there with HTTP
+  403. `capabilities` lists only its endpoint's tools.
+- Use each tool's typed `outputSchema`. `meta.scope_used` is no longer returned;
+  obtain permissions from `capabilities`, not from response metadata.
+- A refused envelope has `success=false` and MCP `isError: true`. Read `summary`
+  and `data.error.code` when present; code-less refusals can have `data=null`.
+  Argument validation may fail before an envelope exists. Preserve the actual
+  error and stop dependent writes; transport success does not mean tool success.
 - Follow pagination before claiming that a briefing or pending review is
   complete. Otherwise label it partial.
 - On 429, stop rapid calls and preserve progress. Pace requests below the

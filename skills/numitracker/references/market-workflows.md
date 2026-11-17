@@ -112,6 +112,13 @@ Use `list_market_opportunities` only when
 `market_opportunities:read.active` is true. These are pre-computed indexed
 signals, not recommendations or guaranteed arbitrage.
 
+Each row has a `type`: `low_premium`, `price_drop`, `arbitrage`, or
+`rare_opportunity`. Read `type` first, then only that type's fields: fields of
+the other types are absent, not null. `score` contains exactly `total`,
+`value`, `freshness`, and `market_context`; do not rely on extra score keys.
+Monetary values are decimal strings and percentages are numbers. Treat nulls
+within a row's own fields as unavailable, not zero.
+
 Report opportunity type, score, relevant price/premium evidence, market and
 freshness. The tool has no market filter; use each row's `dealer_country` and
 `detected_at`. An empty result with a cold-cache warning means the signals are
@@ -137,6 +144,12 @@ Do not interpret watchlist membership as an investment holding or portfolio
 allocation.
 
 ## No results and pagination
+
+`list_product_offers` refuses an unknown or inactive product with
+`success=false`, `isError: true`, `data.error.code="product_not_found"` and
+summary `Product not found.`. This is different from a successful empty list
+for an active product without matching offers. A missing snapshot from
+`get_spot_prices` is a code-less refusal (`data=null`); preserve its summary.
 
 When no data is returned, distinguish:
 

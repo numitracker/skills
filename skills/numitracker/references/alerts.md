@@ -39,6 +39,27 @@ Alerts take no market argument. Price, premium, spread, and availability
 conditions use available offers from every dealer market (`PL` and `EU`
 together), so do not present an alert as `PL`-only or `EU`-only.
 
+## Call shape
+
+`create_alert(name, alert_type, condition, execution_type)` takes one
+`condition` object. Its `condition_type` selects the kind, and the object takes
+only that kind's keys:
+
+| `condition_type` | Keys besides `condition_type` |
+|---|---|
+| `product_buy_price`, `product_sell_price` | `operator`, `value`, `value2`; `product_slug` for one product, or `metal_type` with optional `product_form` and `weights` for a category |
+| `premium`, `spread`, `availability` | `operator`, `value`, `value2`; `product_slug` (required) |
+| `spot_price` | `operator`, `value`, `value2`; `product_slug` or `market_indicator` |
+| `ratio` | `operator`, `value`, `value2`; `market_indicator` (required) |
+| `cart_total_buy`, `cart_total_sell` | `operator`, `value`, `value2`; `cart_id` (required) |
+| `lost_top1`, `gained_top1` | `product_slug` and `offer_type` (both required); `operator` is always `any`; no thresholds |
+
+A non-null key of another kind, a missing required key, or an unknown
+`condition_type` is an argument-validation error before the tool runs; the
+message names the kind and the key. Keys of other kinds sent as `null` are
+ignored. `weights` may also be sent as one slug or a JSON array string; it is
+read in full.
+
 ## Supported alert types
 
 ### `product`
@@ -51,6 +72,10 @@ Valid conditions:
   `product_slug`, operator, and threshold(s).
 - `product_sell_price`: buyback/skup price (dealer buys from customer); requires
   `product_slug`, operator, and threshold(s).
+
+A `product` alert refuses a price condition without `product_slug` with code
+`invalid_alert_condition` ("Product alerts require a product on price
+conditions."); use `product_general` for a category.
 - `premium`: premium over spot for one product; requires `product_slug`,
   operator, and percentage threshold(s).
 - `spread`: retail-to-buyback spread for one product, as a percentage of the
@@ -69,12 +94,14 @@ Valid conditions:
 Targets a product category. Valid conditions are `product_buy_price` (retail)
 and `product_sell_price` (buyback). Provide:
 
-- `metal_type` as a current `MetalType.slug`;
+- `metal_type` as a current `MetalType.slug` (required);
 - `product_form` as a current `MetalFormType.slug` when restricting form;
 - `weights` as current `Weight.slug` values when restricting weights;
 - operator and threshold(s).
 
-Confirm whether omitted form/weights intentionally mean all forms/weights.
+Do not send `product_slug`: a `product_general` alert refuses a product, and a
+missing `metal_type`, with code `invalid_alert_condition`. Confirm whether
+omitted form/weights intentionally mean all forms/weights.
 
 ### `market`
 
@@ -87,9 +114,8 @@ Valid conditions:
 - `ratio`: provide an ordered-pair `market_indicator` from the rules below,
   an operator, and threshold(s) unless using `any`.
 
-Do not send `metal_type` for market alerts. It is accepted but ignored by the
-measurement; supplied slugs still undergo vocabulary validation. The tool
-documents `metal_type` only for `product_general`.
+Do not send `metal_type` for market alerts: `spot_price` and `ratio`
+conditions have no such key, so a non-null `metal_type` is an argument error.
 
 Use current `get_spot_prices` data to show context before previewing the alert,
 but do not change the threshold based on that context without user instruction.
@@ -98,10 +124,9 @@ but do not change the threshold based on that context without user instruction.
 
 Use `list_product_attributes` to resolve exact current slugs for `metal_type`,
 `product_form`, and every element of `weights`. Display labels and guessed
-hyphenation are not valid substitutes. The server checks every supplied slug,
-even when the chosen condition does not use that field. Unknown slugs, empty
-scalar slugs, and any invalid weight refuse the whole creation before alert,
-condition, or activity rows are written. Unknown indicators are also refused,
+hyphenation are not valid substitutes. Unknown slugs, empty scalar slugs, and
+any invalid weight refuse the whole creation before alert, condition, or
+activity rows are written. Unknown indicators are also refused,
 except that product `spot_price` discards the indicator before validating it.
 `None`/JSON `null` means absent; `weights=[]` means no weight restriction. At most 1,000
 weights are accepted; oversized lists are refused rather than truncated.
@@ -175,29 +200,48 @@ highest wins.
 
 Gather and show:
 
-1. human-readable `name` of at most 200 characters; longer names are refused;
+1. human-readable `name` of at most 200 characters (`maxLength: 200` in the input schema);
 2. `alert_type` and valid `condition_type`;
 3. target product/category/cart/indicator;
 4. direction (`buy` retail or `sell` buyback) where relevant;
 5. `operator`, `value`, `value2`, units, and currency;
 6. `execution_type` (`one_time` or `recurring`).
 
+Every non-null `value` and `value2` must be finite: NaN and positive/negative
+infinity are invalid. An overlong name, a non-finite threshold, or a condition
+key that does not belong to its kind is an MCP argument-validation error before
+`create_alert` executes, not a failed tool envelope. Do not assume `data.error.code` is available for these errors.
+An unknown or inactive `product_slug` instead returns `success=false`,
+`isError: true`, code `product_not_found` and summary `Product not found.`.
+Other domain refusals carry their code in `data.error.code`; read it with the
+summary and do not retry or change the proposed alert silently.
+
 Example preview:
 
 | # | Action | Target | Condition | Persistence |
 |---|---|---|---|---|
-| 1 | `create_alert` | `krugerrand-1-oz-p123` | retail `product_buy_price` `lt 12,000 PLN` | `one_time` |
+| 1 | `create_alert` | `krugerrand-1-oz-p123` | `condition={condition_type: product_buy_price, product_slug: krugerrand-1-oz-p123, operator: lt, value: 12000}` (retail, PLN) | `one_time` |
 
 Then ask for explicit approval. After success, report the returned alert ID and
 read it back with `list_alerts`.
 
 ## Existing alert changes
 
-Use `list_alerts` to resolve IDs and current state before previewing:
+Use `list_alerts` to resolve IDs and current state before previewing. Each
+listed condition carries only the keys of its `condition_type`: cart conditions
+include `cart_id`, and TOP1 conditions have no `value` or `value2`.
 
-- `set_alert_active(alert_id, true)` enables;
-- `set_alert_active(alert_id, false)` pauses;
+- `set_alert_active(alert_id=..., active=true)` enables;
+- `set_alert_active(alert_id=..., active=false)` pauses;
 - `delete_alert(alert_id)` permanently removes the alert and its conditions.
+
+When `set_alert_active` changes the state, it also resets `trigger_count` to 0
+and `last_triggered_at` to null, and logs `alert_activated` or `alert_paused`.
+Include that reset in the preview. Requesting the current state is a no-op:
+trigger history is preserved and no activation/pause activity is logged.
+Missing or foreign IDs are refused with `success=false`, `isError: true`,
+`data.error.code="not_found"` and summary `The requested resource was not found.`.
+Do not describe that refusal as a successful pause or enable.
 
 Deletion is goal-state/idempotent, but still requires approval. A request to
 “replace” an alert is two writes: preview deletion and creation together, then

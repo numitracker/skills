@@ -43,7 +43,7 @@
       "expected_output": "Previews the complete replacement list with method objects and does not write.",
       "files": [],
       "expectations": [
-        "Includes all three method objects in the after value",
+        "Includes all three method objects in the after value under dealer_update_profile(profile={shipping_methods:[...]})",
         "Preserves the disabled Paczkomat entry instead of dropping it",
         "Sets an explicit enabled and custom value for the new method",
         "Requests approval and performs no write"
@@ -236,7 +236,7 @@
         "Accepts row widths 1 and 6 and refuses 0 and 7; accepts row counts 1 and 10 and refuses 0 and 11",
         "Accepts 1800 and the current calendar year; refuses 1799 and next year",
         "Does not extend the unchanged-value exception to supplied layout dimensions or established_year",
-        "Clears via clear_established_year=true without also sending a new established_year"
+        "Clears via dealer_update_profile(profile={\"established_year\":null}); omission keeps the year and clear_established_year is no longer accepted"
       ]
     },
     {
@@ -297,6 +297,43 @@
         "Reports premium and spot as unavailable, never zero",
         "Keeps the server-provided 10% spread because both price sides exist",
         "Does not invent a spot-derived price target or execute repricing"
+      ]
+    },
+    {
+      "id": 26,
+      "prompt": "Fresh dealer_get_profile shows established_year=2001, phone=\"123456789\", and shipping_methods=[{\"label\":\"Courier\",\"enabled\":true,\"custom\":false}]. Draft only: clear the year, clear phone, keep shipping methods and all branches. Show the exact call; do not execute.",
+      "expected_output": "A minimal nested profile patch clears the year with null and phone with an empty string while preserving omitted lists and branches.",
+      "files": [],
+      "expectations": [
+        "Previews dealer_update_profile(profile={\"established_year\":null,\"phone\":\"\"})",
+        "Omits shipping_methods and location fields to preserve their stored values",
+        "Does not use flat arguments or clear_established_year",
+        "Requests approval for the exact preview and performs no write"
+      ]
+    },
+    {
+      "id": 27,
+      "prompt": "Without calls, compare dealer_update_profile(profile={}), profile={\"phone\":null,\"metals\":null}, and profile={\"established_year\":null}. The year is already null. What results should I expect?",
+      "expected_output": "Distinguishes ignored-null no_fields refusals from a valid year-clearing no-op.",
+      "files": [],
+      "expectations": [
+        "Empty and ignored-null-only patches return success=false, isError=true, data.error.code=no_fields and summary No fields to update were provided.",
+        "Null phone/metals do not clear their stored values",
+        "The explicit null year patch is valid and succeeds with updated_fields=[] when the year is already null",
+        "Does not retry a refusal or report ignored fields as cleared"
+      ]
+    },
+    {
+      "id": 28,
+      "prompt": "Validate these proposed profile patches without writing: profile={\"clear_established_year\":true}, profile={\"locations\":[]}, profile={\"remove_location_ids\":[77]}, profile={\"is_verified\":true}, and profile={\"phone_typo\":\"123\"}. Could the server silently ignore the extra keys?",
+      "expected_output": "Identifies unknown-key argument validation and routes branch operations through the location tools.",
+      "files": [],
+      "expectations": [
+        "Refuses all listed unknown keys instead of assuming they are silently ignored",
+        "Uses established_year:null inside profile to clear the year",
+        "Routes branch creation/update to dealer_set_location and deletion to dealer_remove_location after resolving owned IDs",
+        "Does not place locations or remove_location_ids inside profile or as flat arguments",
+        "Does not execute an invalid or unapproved replacement call"
       ]
     }
   ]

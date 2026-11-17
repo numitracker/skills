@@ -294,13 +294,13 @@
     {
       "id": 26,
       "prompt": "Preview a one_time market spot_gold alert below 14000 PLN per ounce. I suggested metal_type=srebro to make it use silver. Should that field be sent? Also consider metal_type=made-up. Do not execute.",
-      "expected_output": "Uses the market indicator alone, omits metal_type, and explains validation of unnecessary supplied slugs.",
+      "expected_output": "Uses the market indicator alone, omits metal_type, and explains that keys of another condition kind are refused.",
       "files": [],
       "expectations": [
         "Previews alert_type=market, condition_type=spot_price, market_indicator=spot_gold, operator=lt, value=14000, execution_type=one_time",
         "Does not send metal_type or value2",
-        "Explains that a valid supplied metal_type is accepted but ignored by the measurement",
-        "Explains that an unknown supplied metal_type is still refused by vocabulary validation",
+        "Explains that a spot_price condition has no metal_type key, so sending one is refused before the tool runs",
+        "Explains that a valid or unknown metal_type is refused the same way, as an argument error",
         "Does not silently switch the indicator to silver; seeks clarification if silver is intended"
       ]
     },
@@ -337,6 +337,31 @@
         "States add_to_watchlist refuses an inactive product",
         "Does not equate hidden membership with deletion or freed quota; the add limit counts stored memberships",
         "Explains removal can still target an inactive product by its known slug, subject to the write preview and approval"
+      ]
+    },
+    {
+      "id": 30,
+      "prompt": "An alert is active with trigger_count=3 and last_triggered_at set. Compare set_alert_active(active=false), then active=false again, then active=true. What must the preview disclose? No calls.",
+      "expected_output": "Describes trigger-history reset and activation/pause logs only when state changes.",
+      "files": [],
+      "expectations": [
+        "First pause resets trigger_count to 0 and last_triggered_at to null and logs alert_paused",
+        "Repeated false is a no-op with no new activity and no history reset",
+        "Enabling changes state, clears trigger history and logs alert_activated",
+        "Includes reset in the exact preview and performs no writes without approval"
+      ]
+    },
+    {
+      "id": 31,
+      "prompt": "Explain these MCP outcomes without retrying: create_alert with a 201-character name; create_alert with value=NaN or value2=Infinity; set_alert_active on a missing or foreign ID; create_alert with an inactive product_slug.",
+      "expected_output": "Separates pre-execution argument errors from coded domain-refusal envelopes.",
+      "files": [],
+      "expectations": [
+        "Name maximum is 200 and each supplied threshold must be finite",
+        "Overlong name and non-finite thresholds fail argument validation before execution; does not require an envelope or domain code",
+        "Missing/foreign set_alert_active yields success=false, isError=true, not_found and The requested resource was not found.",
+        "Inactive product_slug yields product_not_found and Product not found.",
+        "Reports failure without retrying, inventing success or altering proposed arguments"
       ]
     }
   ]

@@ -160,6 +160,14 @@ authorize writes.
 
 ## Fail safely
 
+- Connect a public/dealer key to `/mcp`; admin keys are refused there with HTTP
+  403. `capabilities` lists only its endpoint's tools.
+- Use each tool's typed `outputSchema`. `meta.scope_used` is no longer returned;
+  obtain permissions from `capabilities`, not from response metadata.
+- A refused envelope has `success=false` and MCP `isError: true`. Read `summary`
+  and `data.error.code` when present; code-less refusals can have `data=null`.
+  Argument validation may fail before an envelope exists. Preserve the actual
+  error and stop dependent writes; transport success does not mean tool success.
 - Respect `meta.has_more`: page until the decision is supported or disclose that
   the result is partial. Do not claim global best from a partial page.
 - On no results, confirm filters and product identity before broadening. Ask
