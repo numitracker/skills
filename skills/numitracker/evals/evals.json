@@ -363,6 +363,18 @@
         "Inactive product_slug yields product_not_found and Product not found.",
         "Reports failure without retrying, inventing success or altering proposed arguments"
       ]
+    },
+    {
+      "id": 32,
+      "prompt": "The user wants to add the gold Kangur 2025 coin to their watchlist. search_products(search=\"kangur 2025\", metal_type=[\"zloto\"]) returns 2 rows, but the user says the website shows 7. Explain the difference and your next search without calling tools.",
+      "expected_output": "Explains the default retail-price restriction and repeats the search with include_unavailable=true, treating unpriced rows as unavailable data.",
+      "files": [],
+      "expectations": [
+        "Explains that search_products returns only products with a retail price in the selected market by default",
+        "Repeats the same search with include_unavailable=true instead of loosening identity filters",
+        "Treats null best_buy_price, over_spot and spread with is_available=false as missing data, never zero or a bargain",
+        "Does not add min_price or a price-based order_by, which would drop the unpriced products again"
+      ]
     }
   ]
 }

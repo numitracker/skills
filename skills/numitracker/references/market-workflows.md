@@ -11,7 +11,8 @@ this file explains sequencing, interpretation, and output.
 2. Use `list_product_attributes` when an exact Polish slug is unknown. Do not
    translate a display name into a guessed slug.
 3. Use `search_products` broadly enough to find candidates, then reuse returned
-   slugs to narrow.
+   slugs to narrow. Pass `include_unavailable=true` when the product may have no
+   current retail price (watchlist, alerts, specifications).
 4. If more than one candidate remains plausible, present at most five with
    canonical slug and distinguishing fields. Wait for selection.
 5. Use the canonical product slug returned by the server in every later call.
@@ -53,9 +54,11 @@ retail or known positive spot, premium is null; without either price side,
 spread is null. Retail with known positive spot and no buyback still permits a
 premium. Missing spot alone does not prevent a spread when both prices exist.
 Never turn null into zero, a -100% premium, or an arbitrage signal. Details and
-watchlist can retain active unpriced products; `search_products` returns only
-products with a retail price in the selected market, and its spread/buyback
-orderings also require a buyback price.
+watchlist can retain active unpriced products. By default `search_products`
+returns only products with a retail price in the selected market;
+`include_unavailable=true` adds active unpriced products, which `min_price` and
+every price-based ordering still drop. Its spread/buyback orderings also require
+a buyback price.
 
 ## “Best” criteria
 

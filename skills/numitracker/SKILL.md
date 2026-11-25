@@ -89,8 +89,10 @@ A product with no prices in the selected market has null `best_buy_price`,
 premium null; either missing price makes spread null. Missing spot data also
 makes premium null, even with a retail price. Retail with known positive spot
 can have a premium when buyback is missing. Null is unavailable data, never zero
-or a bargain. `search_products` returns only products with a retail price in the
-selected market; details and watchlist can retain active unpriced products.
+or a bargain. By default `search_products` returns only products with a retail
+price in the selected market; `include_unavailable=true` also lists active
+unpriced products with null retail fields and `is_available=false`. Details and
+watchlist can retain active unpriced products.
 Inactive products are excluded from watchlist rows and totals and cannot be added.
 
 Alert vocabulary inputs are validated: resolve `metal_type`, `product_form`,

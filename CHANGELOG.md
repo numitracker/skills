@@ -49,6 +49,9 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
   semantics, spot units, percentage premium/spread, alert market scope and
   condition measurements, dealer price rounding, and primary-location rules.
 - Expand consumer and dealer evals for these contracts and review refusals.
+- Document `search_products(include_unavailable=true)`, which also lists active
+  products without a current retail price; `min_price` and price-based
+  orderings still drop them.
 
 ## [1.0.0]
 
